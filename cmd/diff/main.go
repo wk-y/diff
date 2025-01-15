@@ -13,7 +13,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/wk-y/diff/diff"
+	"github.com/wk-y/diff"
 )
 
 // Utility function to read f until EOF as a string
