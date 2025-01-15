@@ -8,19 +8,18 @@ package diff
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
 func TestDiff(t *testing.T) {
 	type TestCase struct {
-		name     string
 		a, b     []string
 		expected []DiffPart
 	}
 
 	testCases := []TestCase{
 		{
-			"hello_world",
 			[]string{"Hello", "world!"},
 			[]string{"world!"},
 			[]DiffPart{
@@ -29,7 +28,6 @@ func TestDiff(t *testing.T) {
 			},
 		},
 		{
-			"longer",
 			[]string{"A", "B", "C", "C" /**/},
 			[]string{"A" /**/, "C", "C", "B"},
 			[]DiffPart{
@@ -38,6 +36,24 @@ func TestDiff(t *testing.T) {
 				{DiffIdentical, "C"},
 				{DiffIdentical, "C"},
 				{DiffAdded, "B"},
+			},
+		},
+		{
+			strings.Split("The quick brown fox jumps over the lazy dog", " "),
+			strings.Split("A over quick red fox jumps the lazy dog", " "),
+			[]DiffPart{
+				{DiffRemoved, "The"},
+				{DiffAdded, "A"},
+				{DiffAdded, "over"},
+				{DiffIdentical, "quick"},
+				{DiffRemoved, "brown"},
+				{DiffAdded, "red"},
+				{DiffIdentical, "fox"},
+				{DiffIdentical, "jumps"},
+				{DiffRemoved, "over"},
+				{DiffIdentical, "the"},
+				{DiffIdentical, "lazy"},
+				{DiffIdentical, "dog"},
 			},
 		},
 	}
