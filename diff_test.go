@@ -1,8 +1,6 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 package diff
 
@@ -62,7 +60,44 @@ func TestDiff(t *testing.T) {
 		result := Diff(testCase.a, testCase.b)
 		if !reflect.DeepEqual(result, testCase.expected) {
 			t.Errorf("Expected %v, Got %v", testCase.expected, result)
-			t.Fail()
+		}
+
+		// Verify that the original files can be reconstructed from result
+		a, b := extractOriginals(result)
+		if !reflect.DeepEqual(a, testCase.a) {
+			t.Errorf("Original a was %v, got %v", testCase.a, a)
+		}
+		if !reflect.DeepEqual(b, testCase.b) {
+			t.Errorf("Original b was %v, got %v", testCase.b, b)
 		}
 	}
+}
+
+func TestDiffActionString(t *testing.T) {
+	testCases := []struct {
+		action         DiffAction
+		expectedString string
+	}{
+		{DiffAdded, "Added"},
+		{DiffRemoved, "Removed"},
+		{DiffIdentical, "Identical"},
+	}
+	for _, testCase := range testCases {
+		if s := testCase.action.String(); s != testCase.expectedString {
+			t.Errorf("Expected %v, got %v", testCase.expectedString, s)
+		}
+	}
+}
+
+// Given a diff, extract the original two files.
+func extractOriginals(d []DiffPart) (a, b []string) {
+	for _, part := range d {
+		if part.Action != DiffAdded {
+			a = append(a, part.Value)
+		}
+		if part.Action != DiffRemoved {
+			b = append(b, part.Value)
+		}
+	}
+	return
 }

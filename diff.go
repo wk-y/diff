@@ -1,8 +1,6 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 package diff
 
@@ -48,7 +46,7 @@ func WeightedDiff(a, b []string, w func(string) int) (diff []DiffPart) {
 			})
 			i++
 			j++
-		} else if dp[i+1][j] < dp[i][j+1] {
+		} else if dp[i+1][j] < dp[i][j+1] { // In case of tie, prefer to put the removal first
 			diff = append(diff, DiffPart{
 				Action: DiffAdded,
 				Value:  b[j],
@@ -63,19 +61,18 @@ func WeightedDiff(a, b []string, w func(string) int) (diff []DiffPart) {
 		}
 	}
 
-	// Process remaining additions
-	for ; j < m; j++ {
-		diff = append(diff, DiffPart{
-			Action: DiffAdded,
-			Value:  b[j],
-		})
-	}
-
 	// Process remaining removals
 	for ; i < n; i++ {
 		diff = append(diff, DiffPart{
 			Action: DiffRemoved,
 			Value:  a[i],
+		})
+	}
+	// Process remaining additions
+	for ; j < m; j++ {
+		diff = append(diff, DiffPart{
+			Action: DiffAdded,
+			Value:  b[j],
 		})
 	}
 
@@ -101,15 +98,11 @@ const (
 )
 
 func (d DiffAction) String() string {
-	switch d {
-	case DiffAdded:
-		return "Added"
-	case DiffRemoved:
-		return "Removed"
-	case DiffIdentical:
-		return "Identical"
-	}
-	panic("unreachable")
+	return []string{
+		DiffAdded:     "Added",
+		DiffRemoved:   "Removed",
+		DiffIdentical: "Identical",
+	}[d]
 }
 
 type DiffPart struct {
