@@ -11,6 +11,18 @@ import (
 	"github.com/wk-y/diff"
 )
 
+// Information of what part of a file is covered by a hunk
+type hunkCoverage struct {
+	start, count int
+}
+
+func (c hunkCoverage) String() string {
+	if c.count == 1 {
+		return fmt.Sprint(c.start)
+	}
+	return fmt.Sprintf("%v,%v", c.start, c.count)
+}
+
 // DiffString formats an array of DiffParts into a unified diff.
 // DiffString will produce strange results if d is not from LineDiff.
 func DiffString(d []diff.DiffPart) string {
@@ -24,7 +36,7 @@ func DiffString(d []diff.DiffPart) string {
 
 func (h Hunk) String() string {
 	diffLines := make([]string, 0)
-	header := fmt.Sprintf("@@ -%v,%v +%v,%v @@\n", h.aStart, h.aLines, h.bStart, h.bLines)
+	header := fmt.Sprintf("@@ -%v +%v @@\n", hunkCoverage{h.aStart, h.aLines}, hunkCoverage{h.bStart, h.bLines})
 	diffLines = append(diffLines, header)
 	for _, part := range h.parts {
 		switch part.Action {

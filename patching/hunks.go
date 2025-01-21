@@ -29,8 +29,11 @@ func HunkDiff(d []diff.DiffPart) []Hunk {
 		case diff.DiffRemoved:
 			ai++
 		}
-		aln[i] = ai
-		bln[i] = bi
+
+		// Forcing it to be at least 1 improves compatibility with gnu diff,
+		// maybe there is more nuance to how it should be done, however.
+		aln[i] = max(ai, 1)
+		bln[i] = max(bi, 1)
 	}
 
 	const contextLines = 3
