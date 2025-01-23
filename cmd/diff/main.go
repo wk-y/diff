@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/wk-y/diff"
+	"github.com/wk-y/diff/internal/exitcodes"
 	"github.com/wk-y/diff/patching"
 )
 
@@ -68,25 +69,22 @@ func formatHeaderInfo(name string, info os.FileInfo) string {
 	return fmt.Sprintf("%v\t%v\n", name, info.ModTime().Format(headerDateFormat))
 }
 
-const exitIoError = 74
-const exitUsageError = 64
-
 func main() {
 	if len(os.Args) != 3 {
 		fmt.Fprintf(os.Stderr, "Usage: %v file1 file2\n", os.Args[0])
-		os.Exit(exitUsageError)
+		os.Exit(exitcodes.UsageError)
 	}
 
 	a, err := getFileData(os.Args[1])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to read %v: %v", os.Args[1], err)
-		os.Exit(exitIoError)
+		os.Exit(exitcodes.IoError)
 	}
 
 	b, err := getFileData(os.Args[2])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to read %v: %v", os.Args[2], err)
-		os.Exit(exitIoError)
+		os.Exit(exitcodes.IoError)
 	}
 
 	diffed := diff.LineDiff(string(a.Contents), string(b.Contents))
