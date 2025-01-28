@@ -10,8 +10,15 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/wk-y/diff/cmd/diff/internal/directorydiff"
 	"github.com/wk-y/diff/cmd/diff/internal/filediff"
 )
+
+var recursive bool
+
+func init() {
+	flag.BoolVar(&recursive, "r", false, "Recurse")
+}
 
 func main() {
 	flag.Parse()
@@ -20,11 +27,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	fdiff, err := filediff.DiffFiles(flag.Arg(0), flag.Arg(1))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to calculate diff: %v", err)
-		os.Exit(1)
+	if recursive {
+		dirDiff := directorydiff.DiffDirectories(flag.Arg(0), flag.Arg(1))
+		for _, msg := range dirDiff {
+			fmt.Printf("%#v\n", msg)
+		}
+	} else {
+		fdiff, err := filediff.DiffFiles(flag.Arg(0), flag.Arg(1))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to calculate diff: %v", err)
+			os.Exit(1)
+		}
+		fmt.Print(fdiff)
 	}
-
-	fmt.Print(fdiff)
 }
