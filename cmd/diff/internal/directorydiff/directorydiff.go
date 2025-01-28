@@ -54,9 +54,6 @@ func DiffDirectories(aPath, bPath string) (result []DiffMessage) {
 		})
 		return
 	}
-	sort.Slice(aEntries, func(i, j int) bool {
-		return aEntries[i] < aEntries[j]
-	})
 
 	bEntries, err := recursiveListDir(bPath)
 	if err != nil {
@@ -68,9 +65,6 @@ func DiffDirectories(aPath, bPath string) (result []DiffMessage) {
 		})
 		return
 	}
-	sort.Slice(bEntries, func(i, j int) bool {
-		return bEntries[i] < bEntries[j]
-	})
 
 	d := diff.Diff(aEntries, bEntries)
 	for _, part := range d {
@@ -104,9 +98,13 @@ func recursiveListDir(root string) ([]string, error) {
 	var search func(string) error
 	search = func(dirname string) error {
 		entries, err := os.ReadDir(path.Join(root, dirname))
+
 		if err != nil {
 			return err
 		}
+
+		sortDir(entries)
+
 		for _, entry := range entries {
 			entryPath := path.Join(dirname, entry.Name())
 			if entry.IsDir() {
