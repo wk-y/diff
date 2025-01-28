@@ -1,3 +1,3 @@
 module github.com/wk-y/diff
 
-go 1.23.4
+go 1.17

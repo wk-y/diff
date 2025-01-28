@@ -32,8 +32,18 @@ func HunkDiff(d []diff.DiffPart) []Hunk {
 
 		// Forcing it to be at least 1 improves compatibility with gnu diff,
 		// maybe there is more nuance to how it should be done, however.
-		aln[i] = max(ai, 1)
-		bln[i] = max(bi, 1)
+
+		if ai > 1 {
+			aln[i] = ai
+		} else {
+			aln[i] = 1
+		}
+
+		if bi > 1 {
+			bln[i] = bi
+		} else {
+			bln[i] = 1
+		}
 	}
 
 	const contextLines = 3
@@ -41,7 +51,10 @@ func HunkDiff(d []diff.DiffPart) []Hunk {
 	hunks := make([]Hunk, 0)
 	for i := 0; i < len(d); i++ {
 		if d[i].Action != diff.DiffIdentical {
-			dStart := max(i-contextLines, 0)
+			dStart := i - contextLines
+			if dStart < 0 {
+				dStart = 0
+			}
 			newHunk := Hunk{
 				aStart: aln[dStart],
 				bStart: bln[dStart],

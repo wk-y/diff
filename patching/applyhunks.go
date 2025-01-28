@@ -3,7 +3,7 @@ package patching
 import (
 	"fmt"
 	"reflect"
-	"slices"
+	"sort"
 
 	"github.com/wk-y/diff"
 )
@@ -76,8 +76,8 @@ func ApplyHunks(a []string, hunks []Hunk) ([]string, error) {
 	// TODO: Reject overlapping hunks?
 
 	// Ensure the hunks are in order from first to last.
-	slices.SortFunc(h, func(a, b Hunk) int {
-		return a.aStart - b.aStart
+	sort.Slice(h, func(i, j int) bool {
+		return h[i].aStart < h[j].aStart
 	})
 
 	// Apply the hunks as we go

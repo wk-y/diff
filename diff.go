@@ -4,7 +4,9 @@
 
 package diff
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // WeightedDiff takes in two sequences a and b, and tries to create a diff that
 // maximizes the sum of w(s) where s is marked identical in the diff.
@@ -20,7 +22,7 @@ func WeightedDiff(a, b []string, w func(string) int) (diff []DiffPart) {
 	// dp[i][j] = Number of matches possible for a[i..end] and b[j..end]
 	// The last row and column are for matching nothing against nothing (a[n..end] and b[n..end]) for sake of code simplicity
 	dp := make([][]int, n+1)
-	for i := range n + 1 {
+	for i := 0; i <= n; i++ {
 		dp[i] = make([]int, m+1)
 	}
 
@@ -31,7 +33,14 @@ func WeightedDiff(a, b []string, w func(string) int) (diff []DiffPart) {
 				matching = w(a[i])
 			}
 
-			dp[i][j] = max(dp[i+1][j+1]+matching, dp[i+1][j], dp[i][j+1])
+			opt := dp[i+1][j+1] + matching
+			if x := dp[i+1][j]; x > opt {
+				opt = x
+			}
+			if x := dp[i][j+1]; x > opt {
+				opt = x
+			}
+			dp[i][j] = opt
 		}
 	}
 
