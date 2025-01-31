@@ -4,22 +4,45 @@
 
 package strutils
 
+import (
+	"io"
+	"strings"
+)
+
 // This follows a UNIX-style approach. Lines end with a \n, and the \n is
 // preserved. This means that joining the strings with "" will reproduce the
 // original string. If the original string did not end in a \n, the last line
 // in the split won't either.
 func SplitLines(a string) []string {
-	split := make([]string, 0)
-	buffer := make([]rune, 0)
-	for _, r := range a {
-		buffer = append(buffer, r)
-		if r == '\n' {
-			split = append(split, string(buffer))
-			buffer = []rune{}
+	lines, _ := ReadLines(strings.NewReader(a))
+	return lines
+}
+
+func ReadLines(r io.Reader) ([]string, error) {
+	lines := []string{}
+	stringBuffer := []byte{}
+	var readBuffer [4096]byte // Buffer to store read bytes
+	for {
+		len, err := r.Read(readBuffer[:])
+		for _, c := range readBuffer[:len] {
+			stringBuffer = append(stringBuffer, c)
+			if c == '\n' {
+				lines = append(lines, string(stringBuffer))
+				stringBuffer = stringBuffer[:0]
+			}
+		}
+
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return lines, err
 		}
 	}
-	if len(buffer) > 0 {
-		split = append(split, string(buffer))
+
+	if len(stringBuffer) > 0 {
+		lines = append(lines, string(stringBuffer))
 	}
-	return split
+
+	return lines, nil
 }
