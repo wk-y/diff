@@ -32,7 +32,7 @@ func TestSplitLines(t *testing.T) {
 	for _, test := range tests {
 		result := SplitLines(test.text)
 		if !reflect.DeepEqual(result, test.expected) {
-			t.Errorf("Expected %v, got %v", result, test.expected)
+			t.Errorf("Expected %#v, got %#v", test.expected, result)
 		}
 	}
 }
