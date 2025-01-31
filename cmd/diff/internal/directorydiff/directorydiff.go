@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/wk-y/diff"
+	"github.com/wk-y/diff/cmd/diff/internal/filediff"
 )
 
 type DiffMessage interface {
@@ -30,7 +31,7 @@ type DiffMessageIdentical struct {
 
 type DiffMessageModified struct {
 	diffMessage
-	diff []diff.DiffPart
+	filediff.FileDiff
 }
 
 type DiffMessageAdded struct {
@@ -78,10 +79,7 @@ func DiffDirectories(aPath, bPath string) (result []DiffMessage) {
 				path: part.Value,
 			}})
 		case diff.DiffIdentical:
-			// TODO: Implement DiffModified and identical detection
-			result = append(result, DiffMessageModified{diffMessage: diffMessage{
-				path: part.Value,
-			}})
+			result = append(result, diffFiles(aPath, bPath, part.Value))
 		}
 	}
 	return
@@ -119,4 +117,34 @@ func recursiveListDir(root string) ([]string, error) {
 	}
 	err := search("/")
 	return result, err
+}
+
+func diffFiles(aPath, bPath, relPath string) DiffMessage {
+	aName := path.Join(aPath, relPath)
+	bName := path.Join(bPath, relPath)
+
+	fdiff, err := filediff.DiffFiles(aName, bName)
+	if err != nil {
+		return DiffMessageError{
+			diffMessage: diffMessage{
+				path: relPath,
+			},
+			Error: err,
+		}
+	}
+
+	for _, part := range fdiff.Diff {
+		if part.Action != diff.DiffIdentical {
+			return DiffMessageModified{diffMessage: diffMessage{
+				path: relPath,
+			},
+				FileDiff: fdiff,
+			}
+		}
+	}
+
+	return DiffMessageIdentical{diffMessage: diffMessage{
+		path: relPath,
+	},
+	}
 }

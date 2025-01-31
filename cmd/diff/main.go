@@ -9,6 +9,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path"
+	"strings"
 
 	"github.com/wk-y/diff/cmd/diff/internal/directorydiff"
 	"github.com/wk-y/diff/cmd/diff/internal/filediff"
@@ -27,13 +29,44 @@ func main() {
 		os.Exit(1)
 	}
 
+	a := flag.Arg(0)
+	b := flag.Arg(1)
 	if recursive {
-		dirDiff := directorydiff.DiffDirectories(flag.Arg(0), flag.Arg(1))
+		dirDiff := directorydiff.DiffDirectories(a, b)
 		for _, msg := range dirDiff {
-			fmt.Printf("%#v\n", msg)
+			switch msg := msg.(type) {
+			case directorydiff.DiffMessageAdded:
+				parent, file := path.Split(path.Join(b, msg.Path()))
+				fmt.Printf("Only in %v: %v\n", strings.TrimSuffix(parent, "/"), file)
+			case directorydiff.DiffMessageDeleted:
+				parent, file := path.Split(path.Join(a, msg.Path()))
+				fmt.Printf("Only in %v: %v\n", strings.TrimSuffix(parent, "/"), file)
+			case directorydiff.DiffMessageModified:
+				// Is the file a binary? Uses the strategy of checking for null byte
+				// https://www.gnu.org/software/diffutils/manual/html_node/Binary.html
+				isBinary := false
+				for _, line := range msg.FileDiff.Diff {
+					for _, c := range []byte(line.Value) {
+						if c == 0 {
+							isBinary = true
+							break
+						}
+					}
+					if isBinary {
+						break
+					}
+				}
+				if isBinary {
+					fmt.Printf("Binary files %v and %v differ\n", msg.FileDiff.OriginalName, msg.FileDiff.ModifiedName)
+				} else {
+					fmt.Print(msg.FileDiff)
+				}
+			case directorydiff.DiffMessageError:
+				// TODO: Actually display errors
+			}
 		}
 	} else {
-		fdiff, err := filediff.DiffFiles(flag.Arg(0), flag.Arg(1))
+		fdiff, err := filediff.DiffFiles(a, b)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to calculate diff: %v", err)
 			os.Exit(1)
