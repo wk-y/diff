@@ -11,23 +11,23 @@ import (
 )
 
 type FileDiff struct {
-	originalName, modifiedName string
-	originalInfo, modifiedInfo os.FileInfo
-	diff                       []diff.DiffPart
+	OriginalName, ModifiedName string
+	OriginalInfo, ModifiedInfo os.FileInfo
+	Diff                       []diff.DiffPart
 }
 
 func DiffFiles(aName, bName string) (FileDiff, error) {
 	result := FileDiff{
-		originalName: aName,
-		modifiedName: bName,
+		OriginalName: aName,
+		ModifiedName: bName,
 	}
-	aFile, err := os.Open(result.originalName)
+	aFile, err := os.Open(result.OriginalName)
 	if err != nil {
 		return result, err
 	}
 	defer aFile.Close()
 
-	result.originalInfo, err = aFile.Stat()
+	result.OriginalInfo, err = aFile.Stat()
 	if err != nil {
 		return result, err
 	}
@@ -37,13 +37,13 @@ func DiffFiles(aName, bName string) (FileDiff, error) {
 		return result, err
 	}
 
-	bFile, err := os.Open(result.modifiedName)
+	bFile, err := os.Open(result.ModifiedName)
 	if err != nil {
 		return result, err
 	}
 	defer bFile.Close()
 
-	result.modifiedInfo, err = bFile.Stat()
+	result.ModifiedInfo, err = bFile.Stat()
 	if err != nil {
 		return result, err
 	}
@@ -53,7 +53,7 @@ func DiffFiles(aName, bName string) (FileDiff, error) {
 		return result, err
 	}
 
-	result.diff = diff.LineDiff(string(aBytes), string(bBytes))
+	result.Diff = diff.LineDiff(string(aBytes), string(bBytes))
 
 	return result, nil
 }
@@ -68,8 +68,8 @@ func formatHeaderInfo(name string, info os.FileInfo) string {
 
 func (f FileDiff) String() string {
 	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("--- %v", formatHeaderInfo(f.originalName, f.originalInfo)))
-	builder.WriteString(fmt.Sprintf("+++ %v", formatHeaderInfo(f.modifiedName, f.modifiedInfo)))
-	builder.WriteString(patching.DiffString(f.diff))
+	builder.WriteString(fmt.Sprintf("--- %v", formatHeaderInfo(f.OriginalName, f.OriginalInfo)))
+	builder.WriteString(fmt.Sprintf("+++ %v", formatHeaderInfo(f.ModifiedName, f.ModifiedInfo)))
+	builder.WriteString(patching.DiffString(f.Diff))
 	return builder.String()
 }
