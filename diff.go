@@ -6,6 +6,7 @@ package diff
 
 import (
 	"fmt"
+	"reflect"
 )
 
 // WeightedDiff takes in two sequences a and b, and tries to create a diff that
@@ -15,6 +16,16 @@ import (
 // a = diff parts that are identical or removed
 // b = diff parts that are identical or added
 func WeightedDiff(a, b []string, w func(string) int) (diff []DiffPart) {
+	// If a and b are identical there's no need to do anything
+	if reflect.DeepEqual(a, b) {
+		for _, part := range a {
+			diff = append(diff, DiffPart{
+				Action: DiffIdentical,
+				Value:  part,
+			})
+		}
+		return
+	}
 
 	n := len(a)
 	m := len(b)
