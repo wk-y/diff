@@ -32,8 +32,7 @@ func main() {
 	a := flag.Arg(0)
 	b := flag.Arg(1)
 	if recursive {
-		dirDiff := directorydiff.DiffDirectories(a, b)
-		for _, msg := range dirDiff {
+		callback := func(msg directorydiff.DiffMessage) {
 			switch msg := msg.(type) {
 			case directorydiff.DiffMessageAdded:
 				parent, file := path.Split(path.Join(b, msg.Path()))
@@ -64,6 +63,11 @@ func main() {
 			case directorydiff.DiffMessageError:
 				// TODO: Actually display errors
 			}
+		}
+		err := directorydiff.DiffDirectories(a, b, callback)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
 		}
 	} else {
 		fdiff, err := filediff.DiffFiles(a, b)

@@ -48,45 +48,46 @@ type DiffMessageError struct {
 }
 
 // DiffDirectories will write messages to ch.
-func DiffDirectories(aPath, bPath string) (result []DiffMessage) {
+func DiffDirectories(aPath, bPath string, callback func(DiffMessage)) error {
 	aEntries, err := recursiveListDir(aPath)
 	if err != nil {
-		result = append(result, DiffMessageError{
+		callback(DiffMessageError{
 			diffMessage: diffMessage{
 				path: path.Join(aPath),
 			},
 			Error: err,
 		})
-		return
+		return err
 	}
 
 	bEntries, err := recursiveListDir(bPath)
 	if err != nil {
-		result = append(result, DiffMessageError{
+		callback(DiffMessageError{
 			diffMessage: diffMessage{
 				path: path.Join(bPath),
 			},
 			Error: err,
 		})
-		return
+		return err
 	}
 
 	d := diff.Diff(aEntries, bEntries)
 	for _, part := range d {
 		switch part.Action {
 		case diff.DiffAdded:
-			result = append(result, DiffMessageAdded{diffMessage: diffMessage{
+			callback(DiffMessageAdded{diffMessage: diffMessage{
 				path: part.Value,
 			}})
 		case diff.DiffRemoved:
-			result = append(result, DiffMessageDeleted{diffMessage: diffMessage{
+			callback(DiffMessageDeleted{diffMessage: diffMessage{
 				path: part.Value,
 			}})
 		case diff.DiffIdentical:
-			result = append(result, diffFiles(aPath, bPath, part.Value))
+			callback(diffFiles(aPath, bPath, part.Value))
 		}
 	}
-	return
+
+	return nil
 }
 
 func sortDir(d []os.DirEntry) {
