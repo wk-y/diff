@@ -60,15 +60,13 @@ func main() {
 				} else {
 					fmt.Print(msg.FileDiff)
 				}
+			case directorydiff.DiffMessageDifferentTypes:
+				fmt.Printf("File %v is %v while file %v is a %v\n", path.Join(a, msg.Path()), msg.AType, path.Join(b, msg.Path()), msg.BType)
 			case directorydiff.DiffMessageError:
-				// TODO: Actually display errors
+				fmt.Fprintf(os.Stderr, "%v\n", msg)
 			}
 		}
-		err := directorydiff.DiffDirectories(a, b, callback)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+		directorydiff.DiffDirectories(a, b, callback)
 	} else {
 		fdiff, err := filediff.DiffFiles(a, b)
 		if err != nil {
