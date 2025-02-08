@@ -47,9 +47,21 @@ type DiffMessageError struct {
 	Error error
 }
 
+type DiffMessageDifferentTypes struct {
+	diffMessage
+	AType, BType string
+}
+
 // DiffDirectories will write messages to ch.
-func DiffDirectories(aPath, bPath string, callback func(DiffMessage)) error {
-	aEntries, err := recursiveListDir(aPath)
+func DiffDirectories(aPath, bPath string, callback func(DiffMessage)) {
+	diffDirectories(aPath, bPath, "/", callback)
+}
+
+func diffDirectories(aPath, bPath, commonPath string, callback func(DiffMessage)) {
+	aDir := path.Join(aPath, commonPath)
+	bDir := path.Join(bPath, commonPath)
+
+	aEntries, err := os.ReadDir(aDir)
 	if err != nil {
 		callback(DiffMessageError{
 			diffMessage: diffMessage{
@@ -57,10 +69,13 @@ func DiffDirectories(aPath, bPath string, callback func(DiffMessage)) error {
 			},
 			Error: err,
 		})
-		return err
+		return
 	}
+	sort.Slice(aEntries, func(i, j int) bool {
+		return aEntries[i].Name() < aEntries[j].Name()
+	})
 
-	bEntries, err := recursiveListDir(bPath)
+	bEntries, err := os.ReadDir(bDir)
 	if err != nil {
 		callback(DiffMessageError{
 			diffMessage: diffMessage{
@@ -68,26 +83,55 @@ func DiffDirectories(aPath, bPath string, callback func(DiffMessage)) error {
 			},
 			Error: err,
 		})
-		return err
+		return
 	}
+	sort.Slice(bEntries, func(i, j int) bool {
+		return bEntries[i].Name() < bEntries[j].Name()
+	})
 
-	d := diff.Diff(aEntries, bEntries)
-	for _, part := range d {
-		switch part.Action {
-		case diff.DiffAdded:
-			callback(DiffMessageAdded{diffMessage: diffMessage{
-				path: part.Value,
-			}})
+	d := diff.DiffAlgorithm(len(aEntries), len(bEntries), func(i, j int) bool {
+		return aEntries[i].Name() == bEntries[j].Name()
+	})
+
+	var i, j int
+	for _, action := range d {
+		switch action {
+		case diff.DiffIdentical:
+			aIsDir := aEntries[i].IsDir()
+			bIsDir := bEntries[j].IsDir()
+			if aIsDir != bIsDir {
+				callback(DiffMessageDifferentTypes{
+					diffMessage: diffMessage{path: path.Join(commonPath, aEntries[i].Name())},
+					AType:       fileType(aEntries[i]),
+					BType:       fileType(bEntries[j]),
+				})
+			} else if aIsDir {
+				diffDirectories(aPath, bPath, path.Join(commonPath, aEntries[i].Name()), callback)
+			} else {
+				callback(diffFiles(aPath, bPath, path.Join(commonPath, aEntries[i].Name())))
+			}
+			i++
+			j++
 		case diff.DiffRemoved:
 			callback(DiffMessageDeleted{diffMessage: diffMessage{
-				path: part.Value,
+				path: path.Join(commonPath, aEntries[i].Name()),
 			}})
-		case diff.DiffIdentical:
-			callback(diffFiles(aPath, bPath, part.Value))
+			i++
+		case diff.DiffAdded:
+			callback(DiffMessageAdded{diffMessage: diffMessage{
+				path: path.Join(commonPath, bEntries[j].Name()),
+			}})
+			j++
 		}
 	}
+}
 
-	return nil
+func fileType(e os.DirEntry) string {
+	if e.IsDir() {
+		return "a directory"
+	} else {
+		return "a regular file"
+	}
 }
 
 func sortDir(d []os.DirEntry) {
