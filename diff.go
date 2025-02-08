@@ -6,115 +6,43 @@ package diff
 
 import (
 	"fmt"
-	"reflect"
 )
 
-// WeightedDiff takes in two sequences a and b, and tries to create a diff that
-// maximizes the sum of w(s) where s is marked identical in the diff.
-// The algorithm used is the basic O(nm) LCS algorithm.
-// The returned diff has the property that a and b can be reconstructed:
-// a = diff parts that are identical or removed
-// b = diff parts that are identical or added
-func WeightedDiff(a, b []string, w func(string) int) (diff []DiffPart) {
-	// If a and b are identical there's no need to do anything
-	if reflect.DeepEqual(a, b) {
-		for _, part := range a {
-			diff = append(diff, DiffPart{
-				Action: DiffIdentical,
-				Value:  part,
-			})
-		}
-		return
-	}
-
-	n := len(a)
-	m := len(b)
-
-	// dp[i][j] = Number of matches possible for a[i..end] and b[j..end]
-	// The last row and column are for matching nothing against nothing (a[n..end] and b[n..end]) for sake of code simplicity
-	dp := make([][]int, n+1)
-	for i := 0; i <= n; i++ {
-		dp[i] = make([]int, m+1)
-	}
-
-	for i := n - 1; i >= 0; i-- {
-		for j := m - 1; j >= 0; j-- {
-			matching := 0
-			if a[i] == b[j] {
-				matching = w(a[i])
-			}
-
-			opt := dp[i+1][j+1] + matching
-			if x := dp[i+1][j]; x > opt {
-				opt = x
-			}
-			if x := dp[i][j+1]; x > opt {
-				opt = x
-			}
-			dp[i][j] = opt
-		}
-	}
-
-	// Traceback
-	i := 0
-	j := 0
-	for i < n && j < m {
-		if a[i] == b[j] {
-			diff = append(diff, DiffPart{
-				Action: DiffIdentical,
-				Value:  a[i],
-			})
-			i++
-			j++
-		} else if dp[i+1][j] < dp[i][j+1] { // In case of tie, prefer to put the removal first
-			diff = append(diff, DiffPart{
-				Action: DiffAdded,
-				Value:  b[j],
-			})
-			j++
-		} else {
-			diff = append(diff, DiffPart{
-				Action: DiffRemoved,
-				Value:  a[i],
-			})
-			i++
-		}
-	}
-
-	// Process remaining removals
-	for ; i < n; i++ {
-		diff = append(diff, DiffPart{
-			Action: DiffRemoved,
-			Value:  a[i],
-		})
-	}
-	// Process remaining additions
-	for ; j < m; j++ {
-		diff = append(diff, DiffPart{
-			Action: DiffAdded,
-			Value:  b[j],
-		})
-	}
-
-	return
-}
-
-// Diff returns
+// Diff takes two string slices and tries to find as many identical lines between them.
+// The output is an array of added, removed, and identical parts such that:
+// a = removed and identical lines
+// b = added and identical lines
 func Diff(a, b []string) []DiffPart {
-	return WeightedDiff(a, b, func(_ string) int { return 1 })
-}
-
-// MinCharDiff minimizes the characters added/deleted.
-func MinCharDiff(a, b []string) []DiffPart {
-	return WeightedDiff(a, b, func(s string) int { return len(s) })
+	d := DiffAlgorithm(len(a), len(b), func(i, j int) bool {
+		return a[i] == b[j]
+	})
+	result := make([]DiffPart, len(d))
+	var i, j int
+	for k, action := range d {
+		result[k].Action = action
+		switch action {
+		case DiffIdentical:
+			result[k].Value = a[i]
+			i++
+			j++
+		case DiffAdded:
+			result[k].Value = b[j]
+			j++
+		case DiffRemoved:
+			result[k].Value = a[i]
+			i++
+		}
+	}
+	return result
+	// return WeightedDiff(a, b, func(_ string) int { return 1 })
 }
 
 type DiffAction int
 
 const (
-	DiffAdded DiffAction = iota
+	DiffIdentical DiffAction = iota
+	DiffAdded
 	DiffRemoved
-	DiffIdentical
 )
 
 func (d DiffAction) String() string {
@@ -132,4 +60,73 @@ type DiffPart struct {
 
 func (d DiffPart) String() string {
 	return fmt.Sprintf("{%v: %v}", d.Action, d.Value)
+}
+
+func DiffAlgorithm(n, m int, equal func(i, j int) bool) []DiffAction {
+	if n == m {
+		same := true
+		for i := 0; i < n; i++ {
+			if !equal(i, i) {
+				same = false
+				break
+			}
+		}
+		if same {
+			return make([]DiffAction, n)
+		}
+	}
+
+	// dp[i][j] = Number of matches possible for a[i..end] and b[j..end]
+	// The last row and column are for matching nothing against nothing (a[n..end] and b[n..end]) for sake of code simplicity
+	dp := make([][]int, n+1)
+	for i := 0; i <= n; i++ {
+		dp[i] = make([]int, m+1)
+	}
+
+	for i := n - 1; i >= 0; i-- {
+		for j := m - 1; j >= 0; j-- {
+			matching := 0
+			if equal(i, j) {
+				matching = 1
+			}
+
+			opt := dp[i+1][j+1] + matching
+			if x := dp[i+1][j]; x > opt {
+				opt = x
+			}
+			if x := dp[i][j+1]; x > opt {
+				opt = x
+			}
+			dp[i][j] = opt
+		}
+	}
+
+	// Traceback
+	i := 0
+	j := 0
+	diff := []DiffAction{}
+	for i < n && j < m {
+		if equal(i, j) {
+			diff = append(diff, DiffIdentical)
+			i++
+			j++
+		} else if dp[i+1][j] < dp[i][j+1] { // In case of tie, prefer to put the removal first
+			diff = append(diff, DiffAdded)
+			j++
+		} else {
+			diff = append(diff, DiffRemoved)
+			i++
+		}
+	}
+
+	// Process remaining removals
+	for ; i < n; i++ {
+		diff = append(diff, DiffRemoved)
+	}
+	// Process remaining additions
+	for ; j < m; j++ {
+		diff = append(diff, DiffAdded)
+	}
+
+	return diff
 }
