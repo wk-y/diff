@@ -5,6 +5,7 @@
 package directorydiff
 
 import (
+	"io/fs"
 	"os"
 	"path"
 	"sort"
@@ -53,21 +54,18 @@ type DiffMessageDifferentTypes struct {
 }
 
 // DiffDirectories will write messages to ch.
-func DiffDirectories(aPath, bPath string, callback func(DiffMessage)) {
-	diffDirectories(aPath, bPath, "/", callback)
+func DiffDirectories(aFs, bFs fs.FS, callback func(DiffMessage)) {
+	diffDirectories(aFs, bFs, ".", callback)
 }
 
-func diffDirectories(aPath, bPath, commonPath string, callback func(DiffMessage)) {
-	aDir := path.Join(aPath, commonPath)
-	bDir := path.Join(bPath, commonPath)
-
-	aEntries, err := os.ReadDir(aDir)
+func diffDirectories(aFs, bFs fs.FS, commonPath string, callback func(DiffMessage)) {
+	aEntries, err := fs.ReadDir(aFs, commonPath)
 	if err != nil {
 		callback(DiffMessageError{
 			diffMessage: diffMessage{
-				path: path.Join(aPath),
+				path: commonPath,
 			},
-			Error: err,
+			Error: err, // todo: indicate if it is a or b that errored
 		})
 		return
 	}
@@ -75,13 +73,13 @@ func diffDirectories(aPath, bPath, commonPath string, callback func(DiffMessage)
 		return aEntries[i].Name() < aEntries[j].Name()
 	})
 
-	bEntries, err := os.ReadDir(bDir)
+	bEntries, err := fs.ReadDir(bFs, commonPath)
 	if err != nil {
 		callback(DiffMessageError{
 			diffMessage: diffMessage{
-				path: path.Join(bPath),
+				path: commonPath,
 			},
-			Error: err,
+			Error: err, // todo: indicate if it is a or b that errored
 		})
 		return
 	}
@@ -106,9 +104,9 @@ func diffDirectories(aPath, bPath, commonPath string, callback func(DiffMessage)
 					BType:       fileType(bEntries[j]),
 				})
 			} else if aIsDir {
-				diffDirectories(aPath, bPath, path.Join(commonPath, aEntries[i].Name()), callback)
+				diffDirectories(aFs, bFs, path.Join(commonPath, aEntries[i].Name()), callback)
 			} else {
-				callback(diffFiles(aPath, bPath, path.Join(commonPath, aEntries[i].Name())))
+				callback(diffFiles(aFs, bFs, path.Join(commonPath, aEntries[i].Name())))
 			}
 			i++
 			j++
@@ -168,11 +166,24 @@ func recursiveListDir(root string) ([]string, error) {
 	return result, err
 }
 
-func diffFiles(aPath, bPath, relPath string) DiffMessage {
-	aName := path.Join(aPath, relPath)
-	bName := path.Join(bPath, relPath)
+func diffFiles(aFs, bFs fs.FS, relPath string) DiffMessage {
+	a, err := aFs.Open(relPath)
+	if err != nil {
+		return DiffMessageError{
+			diffMessage: diffMessage{path: relPath},
+			Error:       err,
+		}
+	}
 
-	fdiff, err := filediff.DiffFiles(aName, bName)
+	b, err := aFs.Open(relPath)
+	if err != nil {
+		return DiffMessageError{
+			diffMessage: diffMessage{path: relPath},
+			Error:       err,
+		}
+	}
+
+	fdiff, err := filediff.DiffFiles(a, b)
 	if err != nil {
 		return DiffMessageError{
 			diffMessage: diffMessage{

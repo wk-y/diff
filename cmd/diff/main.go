@@ -56,7 +56,7 @@ func main() {
 					}
 				}
 				if isBinary {
-					fmt.Printf("Binary files %v and %v differ\n", msg.FileDiff.OriginalName, msg.FileDiff.ModifiedName)
+					fmt.Printf("Binary files %v and %v differ\n", path.Join(a, msg.Path()), path.Join(b, msg.Path()))
 				} else {
 					fmt.Print(msg.FileDiff)
 				}
@@ -66,13 +66,39 @@ func main() {
 				fmt.Fprintf(os.Stderr, "%v\n", msg)
 			}
 		}
-		directorydiff.DiffDirectories(a, b, callback)
-	} else {
-		fdiff, err := filediff.DiffFiles(a, b)
+		wd, err := os.Getwd()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to calculate diff: %v", err)
+			fmt.Fprintf(os.Stderr, "Failed to get CWD: %v", err)
 			os.Exit(1)
 		}
+		directorydiff.DiffDirectories(
+			os.DirFS(path.Join(wd, a)),
+			os.DirFS(path.Join(wd, b)),
+			callback,
+		)
+	} else {
+		fdiff, err := diffSingle(a, b)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to calculate diff: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Print(fdiff.HeaderString(a, b))
 		fmt.Print(fdiff)
 	}
+}
+
+func diffSingle(a, b string) (filediff.FileDiff, error) {
+	aFile, err := os.Open(a)
+	if err != nil {
+		return filediff.FileDiff{}, err
+	}
+	defer aFile.Close()
+
+	bFile, err := os.Open(b)
+	if err != nil {
+		return filediff.FileDiff{}, err
+	}
+	defer bFile.Close()
+
+	return filediff.DiffFiles(aFile, bFile)
 }
